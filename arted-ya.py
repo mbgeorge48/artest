@@ -1,6 +1,6 @@
 from random import choice, randrange
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 HEIGHT = 1280
 WIDTH = 800
@@ -76,7 +76,7 @@ def doodle(filename):
 
 def add_overlay(filename):
     img = Image.open(filename)
-    overlay = Image.new("RGBA", img.size, (0,0,0) + (0,))
+    overlay = Image.new("RGBA", img.size, (0, 0, 0) + (0,))
     draw = ImageDraw.Draw(overlay)
     draw.rounded_rectangle(
         ((50, 50), (WIDTH - 50, HEIGHT - 50)), fill=(255, 255, 255, 200), radius=50
@@ -88,9 +88,19 @@ def add_overlay(filename):
     img.save(filename, "PNG")
 
 
+def write_heading(filename, heading="Sample Text"):
+    img = Image.open(filename)
+    font = ImageFont.truetype("Comic_Sans_MS_Bold.ttf", 64)
+    draw = ImageDraw.Draw(img)
+    # draw.text((x, y),"Sample Text",(r,g,b))
+    draw.text((WIDTH / 2, 50), heading, (0, 0, 0), font=font, anchor="ma")
+    img.save(filename, "PNG")
+
+
 if __name__ == "__main__":
     filename = "image.png"
 
     create_image(filename)
     doodle(filename)
     add_overlay(filename)
+    write_heading(filename, "heading")
