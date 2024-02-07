@@ -29,7 +29,7 @@ def doodle(filename):
     img = Image.open(filename)
 
     img1 = ImageDraw.Draw(img)
-    for _ in range(0, 100):
+    for _ in range(0, 250):
         start_range = randrange(HEIGHT - 50)
         end_range = randrange(HEIGHT - 50)
         fill = f"hsl({randrange(360)}, 80%, 50%)"
@@ -76,7 +76,7 @@ def doodle(filename):
 
 def add_overlay(filename):
     img = Image.open(filename)
-    overlay = Image.new("RGBA", img.size, (0, 0, 0) + (0,))
+    overlay = Image.new("RGBA", img.size, (0,0,0) + (0,))
     draw = ImageDraw.Draw(overlay)
     draw.rounded_rectangle(
         ((50, 50), (WIDTH - 50, HEIGHT - 50)), fill=(255, 255, 255, 200), radius=50
