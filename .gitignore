@@ -1,3 +1,5 @@
 .venv
 image.png
 venv
+.DS_STORE
+output/
