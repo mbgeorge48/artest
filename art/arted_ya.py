@@ -1,17 +1,23 @@
-from random import choice, randrange
 import os
+from pathlib import Path
+from random import choice, randrange
 
-from PIL import Image, ImageDraw, ImageFont, ImageColor
+from PIL import Image, ImageColor, ImageDraw, ImageFont
+
+ROOT_DIR = Path(__file__).parent.parent
+
+
+OUTPUT_DIR = ROOT_DIR / "output"
+INPUT_DIR = ROOT_DIR / "input"
+RESOURCES_DIR = ROOT_DIR / "resources"
+
+BLACK_RGB = (0, 0, 0)
+
+STANDARD_FONT = RESOURCES_DIR / "Comic_Sans_MS.ttf"
+BOLD_FONT = RESOURCES_DIR / "Comic_Sans_MS_Bold.ttf"
 
 
 class Card:
-    black_rgb = (0, 0, 0)
-    resource_folder = "resources"
-    output_folder = "output"
-    input_folder = "input"
-    standard_font = f"{resource_folder}/Comic_Sans_MS.ttf"
-    bold_font = f"{resource_folder}/Comic_Sans_MS_Bold.ttf"
-
     def __init__(
         self,
         *,
@@ -20,20 +26,22 @@ class Card:
         cursor_start_y=40,
         cursor_left_margin=60,
         filename="image.png",
+        number_of_shapes=250,
     ):
         self.height = height
         self.width = width
         self.cursor_start_y = cursor_start_y
         self.cursor_left_margin = cursor_left_margin
         self.filename = filename
+        self.number_of_shapes = number_of_shapes
 
-        os.mkdir(self.output_folder) if not os.path.exists(self.output_folder) else None
-        os.mkdir(self.input_folder) if not os.path.exists(self.input_folder) else None
+        os.mkdir(OUTPUT_DIR) if not os.path.exists(OUTPUT_DIR) else None
+        os.mkdir(INPUT_DIR) if not os.path.exists(INPUT_DIR) else None
 
         self.create_image()
 
     def save_image(self):
-        self.image.save(os.path.join(self.output_folder, self.filename), "PNG")
+        self.image.save(os.path.join(OUTPUT_DIR, self.filename), "PNG")
 
     def _get_random_shape(self):
         x1 = y1 = 1
@@ -48,7 +56,7 @@ class Card:
 
         return [(x1, y1), (x2, y2)]
 
-    def _set_font(self, *, family=standard_font, size):
+    def _set_font(self, *, family=STANDARD_FONT, size):
         return ImageFont.truetype(family, size)
 
     def _update_cursor(self, bottom, top):
@@ -59,6 +67,7 @@ class Card:
 
     def create_image(self):
         color_str = f"hsl({randrange(360)}, 80%, 50%)"
+
         background_colour = ImageColor.getcolor(color_str, "RGBA")
         image = Image.new("RGBA", (self.width, self.height), background_colour)
         self.image = image
@@ -66,7 +75,7 @@ class Card:
 
     def doodle(self):
         img1 = ImageDraw.Draw(self.image)
-        for _ in range(0, 250):
+        for _ in range(0, self.number_of_shapes):
             start_range = randrange(self.height - 50)
             end_range = randrange(self.height - 50)
             fill = f"hsl({randrange(360)}, 80%, 50%)"
@@ -79,7 +88,7 @@ class Card:
                     "ellipse",
                     "pieslice",
                     "polygon",
-                    "rectangle",
+                    # "rectangle",
                 ]
             ):
                 case "arc":
@@ -136,48 +145,51 @@ class Card:
     def add_overlay(self):
         overlay = Image.new("RGBA", self.image.size, (0, 0, 0) + (0,))
         draw = ImageDraw.Draw(overlay)
+
         draw.rounded_rectangle(
             ((30, 30), (self.width - 30, self.height - 30)),
             fill=(255, 255, 255, 200),
             radius=30,
         )
         draw.rounded_rectangle(
-            ((30, 30), (self.width - 30, self.height - 30)),
-            outline="black",
+            ((60, 60), (self.width - 60, self.height - 60)),
+            outline=BLACK_RGB,
             width=7,
             radius=30,
         )
         self.image = Image.alpha_composite(self.image, overlay)
 
-    def write_heading(self, *, heading: str):
-        font = self._set_font(family=self.bold_font, size=64)
+    def write_heading(self, *, heading, font_size=64):
+        font = self._set_font(family=BOLD_FONT, size=font_size)
         draw = ImageDraw.Draw(self.image)
         draw.text(
             (self.width / 2, self.cursor_start_y),
             heading,
-            fill=self.black_rgb,
+            fill=BLACK_RGB,
             font=font,
             anchor="ma",
         )
         _, top, _, bottom = font.getbbox(heading)
         self._update_cursor(bottom, top)
 
-    def write_subheading(self, *, subheading):
-        font = self._set_font(family=self.bold_font, size=48)
+    def write_subheading(self, *, subheading, font_size=48, bold=True):
+        font = self._set_font(
+            family=BOLD_FONT if bold else STANDARD_FONT, size=font_size
+        )
         draw = ImageDraw.Draw(self.image)
         draw.text(
             (self.width / 2, self.cursor_start_y),
             subheading,
-            fill=self.black_rgb,
+            fill=BLACK_RGB,
             font=font,
             anchor="ma",
         )
         _, top, _, bottom = font.getbbox(subheading)
         self._update_cursor(bottom, top)
 
-    def insert_image(self, *, top_image_path):
-        top_image = Image.open(top_image_path)
-        size = int(self.width / 2)
+    def insert_image(self, *, top_image_path, size=None):
+        top_image = Image.open(top_image_path).convert("RGBA")
+        size = int(self.width / 2) if not size else size
         top_image = top_image.resize((size, size))
         self.image.paste(
             top_image,
@@ -185,6 +197,7 @@ class Card:
                 size - int(top_image.size[0] / 2),
                 self.cursor_start_y,
             ),
+            top_image,
         )
         self._update_cursor(size, 0)
 
@@ -216,13 +229,13 @@ class Card:
             draw.text(
                 (self.cursor_left_margin, self.cursor_start_y),
                 line,
-                fill=self.black_rgb,
+                fill=BLACK_RGB,
                 font=font,
             )
             self._update_cursor(draw.textbbox((0, 0), line, font=font)[3], 0)
 
     def write_stats(self, *, data, font_size=32):
-        key_font = self._set_font(family=self.bold_font, size=font_size)
+        key_font = self._set_font(family=BOLD_FONT, size=font_size)
         value_font = self._set_font(size=font_size)
         draw = ImageDraw.Draw(self.image)
 
@@ -231,21 +244,25 @@ class Card:
             key_width, key_height = right - left, bottom - top
             draw.text(
                 (self.cursor_left_margin, self.cursor_start_y),
-                key,
-                fill=self.black_rgb,
+                f"{key}: ",
+                fill=BLACK_RGB,
                 font=key_font,
             )
+            x = self.cursor_left_margin + key_width + 60
+            y = self.cursor_start_y
             draw.text(
-                (self.cursor_left_margin + key_width + 10, self.cursor_start_y),
+                (x, y),
                 value,
-                fill=self.black_rgb,
+                fill=BLACK_RGB,
                 font=value_font,
             )
             self._update_cursor(key_height + 20, 0)
 
 
 if __name__ == "__main__":
-    sample_card = Card(filename="sample_card.png")
+    sample_card = Card(
+        filename="sample_image.png",
+    )
     sample_card.add_overlay()
     sample_card.write_heading(heading="Mott Geege")
     sample_card.insert_spacer()
@@ -270,29 +287,13 @@ if __name__ == "__main__":
     sample_card.write_subheading(subheading="Most reacted message")
     sample_card.insert_spacer()
     sample_card.write_blurb(
-        text="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas augue augue, gravida sit amet sagittis non, maximus ac dui. Fusce vehicula, massa non finibus dignissim, nulla libero aliquam ante, eu blandit ante nulla in nunc. Pellentesque maximus nisi et arcu suscipit, non lobortis ligula consequat. In vehicula sed urna in. ",
+        text="""
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+        Maecenas augue augue, gravida sit amet sagittis non, maximus ac dui.
+        Fusce vehicula, massa non finibus dignissim,
+        nulla libero aliquam ante, eu blandit ante nulla in nunc.
+        Pellentesque maximus nisi et arcu suscipit,
+        non lobortis ligula consequat. In vehicula sed urna in.
+        """,
     )
     sample_card.save_image()
-
-    # thing.write_heading(heading="Papa Dwarf")
-    # # thing.write_subheading(subheading="(Papa Krasnal)")
-    # thing.insert_spacer()
-    # # Use the CSV row heading in title format, for the prefix
-    # thing.write_blurb(
-    #     text="Fun fact: King of the dwarfs and anti-communist icon",
-    #     font_size=48,
-    # )
-    # thing.insert_spacer(-60)
-    # thing.insert_image(top_image_path="input/sample_image.jpg")
-    # thing.insert_spacer(60)
-    # thing.write_blurb(
-    #     text="Clue: The big boss sitting on a thumb at the crossroads",
-    #     font_size=48,
-    # )
-    # thing.insert_spacer(60)
-    # thing.write_subheading(subheading="Jack's Stag 2026")
-    # # thing.write_stats(data={"fun fact": "King of the dwarfs and anti-communist icon"})
-    # # thing.write_subheading(subheading="fun fact: King of the dwarfs and anti-communist icon")
-    # # thing.write_stats(
-    # # data={"clue": "The big boss sitting on a thumb at the crossroads"}, font_size=48
-    # # )
